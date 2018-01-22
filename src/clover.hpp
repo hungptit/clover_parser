@@ -13,16 +13,19 @@
 #include "fmt/format.h"
 
 // TODO: Save data into SQLite database.
-// TODO: We might need to sort the coverage data so we can reduce the access time.
+// TODO: We might need to sort the coverage data so we can reduce the access
+// time.
 // TODO: Write coverage data into database.
 // TODO: Create a report writer.
-// TODO: Figure out how to trade off between performance and storage? May be it is not a big
-// deal.
-// TODO: Allow users to get the code coverage for a given set of files and folders.
-// TODO: Allow users to reduce their test suites using code coverage information.
+// TODO: Figure out how to trade off between performance and storage? May be it
+// is not a big deal.
+// TODO: Allow users to get the code coverage for a given set of files and
+// folders.
+// TODO: Allow users to reduce their test suites using code coverage
+// information.
 
 namespace clover {
-    enum class CoverageType { STMT = 0, METHOD = 1, COND = 2 };
+    enum class CoverageType : uint8_t { STMT = 0, METHOD = 1, COND = 2 };
 
     template <typename T = size_t> struct Line {
         using index_type = T;
@@ -30,39 +33,26 @@ namespace clover {
         unsigned int num;
     };
 
-    template <typename index_type>
-    bool operator==(const Line<index_type> first, const Line<index_type> second) {
-        return std::tie(first.file_id, first.num) == std::tie(second.file_id, second.num);
-    }
-
-    template <typename index_type>
-    bool operator>(const Line<index_type> first, const Line<index_type> second) {
-        return std::tie(first.file_id, first.num) > std::tie(second.file_id, second.num);
-    }
-
-    template <typename index_type>
-    bool operator<(const Line<index_type> first, const Line<index_type> second) {
-        return std::tie(first.file_id, first.num) < std::tie(second.file_id, second.num);
-    }
-
     // A structure which hold test information.
     struct Test {
         std::string file;
         std::string name;
     };
 
-    bool operator==(const Test &first, const Test &second) {
-        return std::tie(first.file, first.name) == std::tie(second.file, second.name);
-    }
+    // This data structure hold the map from a test to source lines. Note that
+    // source lines can be from different files.
+    template <typename T> struct TestInfo {
+        using index_type = T;
+        index_type test_id;
+        std::vector<index_type> source_lines;
+        TestInfo() : test_id(), source_lines(){};
+    };
 
-    bool operator>(const Test &first, const Test &second) {
-        return std::tie(first.file, first.name) > std::tie(second.file, second.name);
+    // Operators for basic data structures.
+    template <typename index_type>
+    bool operator==(const Line<index_type> first, const Line<index_type> second) {
+        return std::tie(first.file_id, first.num) == std::tie(second.file_id, second.num);
     }
-
-    bool operator<(const Test &first, const Test &second) {
-        return std::tie(first.file, first.name) < std::tie(second.file, second.name);
-    }
-
     // This data structure hold the coverage information of a source line.
     template <typename T = unsigned int> struct CoverageInfo {
         using value_type = T;
@@ -70,7 +60,6 @@ namespace clover {
         value_type count;
         value_type truecount;
         value_type falsecount;
-
         CoverageInfo() : type(CoverageType::STMT), count(0), truecount(0), falsecount(0) {}
     };
 
@@ -85,6 +74,28 @@ namespace clover {
             ar(test_id, line_id, info.type, info.count, info.truecount, info.falsecount);
         }
     };
+
+    template <typename index_type>
+    bool operator>(const Line<index_type> first, const Line<index_type> second) {
+        return std::tie(first.file_id, first.num) > std::tie(second.file_id, second.num);
+    }
+
+    template <typename index_type>
+    bool operator<(const Line<index_type> first, const Line<index_type> second) {
+        return std::tie(first.file_id, first.num) < std::tie(second.file_id, second.num);
+    }
+
+    bool operator==(const Test &first, const Test &second) {
+        return std::tie(first.file, first.name) == std::tie(second.file, second.name);
+    }
+
+    bool operator>(const Test &first, const Test &second) {
+        return std::tie(first.file, first.name) > std::tie(second.file, second.name);
+    }
+
+    bool operator<(const Test &first, const Test &second) {
+        return std::tie(first.file, first.name) < std::tie(second.file, second.name);
+    }
 
     // Operators for LineCoverage.
     template <typename index_type, typename value_type>
@@ -108,7 +119,8 @@ namespace clover {
                std::tie(second.test_id, second.line_id);
     }
 
-    // A simple class which allows users to import and query code coverage information.
+    // A simple class which allows users to import and query code coverage
+    // information.
     template <typename T1, typename T2> class Database {
       public:
         using index_type = T1;
@@ -171,7 +183,7 @@ namespace clover {
         }
 
         void info() {
-			fmt::print("Number of source tests: {}\n", tests.size());
+            fmt::print("Number of source tests: {}\n", tests.size());
             fmt::print("Number of source files: {}\n", source_files.size());
             std::for_each(source_files.cbegin(), source_files.cend(),
                           [](auto item) { fmt::print("{}\n", item); });
@@ -192,10 +204,10 @@ namespace clover {
                                tests[item.test_id].file, source_files[aline.file_id], aline.num,
                                item.info.count);
                 } else {
-                    fmt::print(
-                        "test {0} -> {1}:{2}, type: {3}, falsecount: {4}, and truecount: {5}\n",
-                        tests[item.test_id].file, source_files[aline.file_id], aline.num,
-                        item.info.truecount, item.info.falsecount);
+                    fmt::print("test {0} -> {1}:{2}, type: {3}, falsecount: {4}, and "
+                               "truecount: {5}\n",
+                               tests[item.test_id].file, source_files[aline.file_id], aline.num,
+                               item.info.truecount, item.info.falsecount);
                 }
             }
         }
@@ -204,8 +216,8 @@ namespace clover {
         // This hold a list of source files.
         std::vector<std::string> source_files;
 
-        // This hold a list of tests which might be a file or just of test point which be long
-        // to a file.
+        // This hold a list of tests which might be a file or just of test point which
+        // be long to a file.
         std::vector<Test> tests;
         std::vector<Line<index_type>> lines;
         std::vector<LineCoverage<index_type, value_type>> data;
@@ -299,19 +311,7 @@ namespace clover {
         }
     };
 
-    // This data structure hold the map from a test to source lines. Note that
-    // source lines can be from different files.
-    template <typename T> struct TestInfo {
-        using index_type = T;
-        index_type test_id;
-        std::vector<index_type> source_lines;
-
-		TestInfo() : test_id(), source_lines(){};
-    };
-
-	// TODO: Given a set of TestInfo find a smaller set that can have the same
-	// coverage i.e cover the same set of source lines. This is set covering problem.
-}
+} // namespace clover
 
 namespace std {
     template <typename index_type> struct hash<clover::Line<index_type>> {
@@ -342,4 +342,4 @@ namespace std {
             return h1 ^ (h2 << 4);
         }
     };
-}
+} // namespace std

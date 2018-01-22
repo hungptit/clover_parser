@@ -162,6 +162,4 @@ namespace coverage {
     };
 } // namespace coverage
 
-namespace std {
-
-}
+namespace std {}
